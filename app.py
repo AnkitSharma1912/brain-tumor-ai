@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from scipy.ndimage import zoom
 
 st.set_page_config(page_title="Neuro-Oncology Prognosis AI", layout="wide")
-st.title("🧠 Comprehensive Brain Tumor Prognosis AI")
+st.title("🧠 PINN-Based Brain Tumor Prognosis AI")
 st.markdown("Upload a patient's **Baseline (Scan 1)** and **Follow-up (Scan 2)** 3D MRI masks to predict treatment response.")
 
 class ProgressionCNN3D(nn.Module):
@@ -67,7 +67,7 @@ def resize_3d(arr, target_shape=(32, 32, 32)):
     factors = (target_shape[0]/arr.shape[0], target_shape[1]/arr.shape[1], target_shape[2]/arr.shape[2])
     return zoom(arr, factors, order=0)
 
-mode = st.radio("⚙️ Select AI Engine:", ["Classical ML (PINN + Random Forest)", "Deep Learning (3D CNN + Explainable AI)"], horizontal=True)
+mode = st.radio("⚙️ Select AI Engine:", ["Classical ML (PINN + Random Forest)", "Deep Learning (PINN + 3D CNN + Explainable AI)"], horizontal=True)
 
 col1, col2 = st.columns(2)
 with col1: scan1_file = st.file_uploader("Upload Scan 1 Mask [Baseline]", type=["nii.gz"])
