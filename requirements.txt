@@ -3,5 +3,7 @@ pandas
 numpy
 scikit-learn
 nibabel
-SimpleITK
 joblib
+torch
+scipy
+matplotlib
