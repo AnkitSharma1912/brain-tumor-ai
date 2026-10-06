@@ -154,24 +154,33 @@ if scan1_file and scan2_file and st.button("Run AI Analysis", type="primary"):
             hm_slice = zoom(cam_slice, (32 / cam_slice.shape[0], 32 / cam_slice.shape[1]), order=1)
             orig_slice = delta_map[best_slice, :, :]
 
+            # Mask the zeros so the background becomes black instead of white
+            masked_orig = np.ma.masked_where(orig_slice == 0, orig_slice)
+            
             fig, ax = plt.subplots(1, 3, figsize=(12, 4))
             
-            # Delta Map: Blue = Tumor Regression (-1), White = No Change (0), Red = Growth (+1)
-            im0 = ax[0].imshow(orig_slice, cmap='bwr', vmin=-1.0, vmax=1.0)
-            ax[0].set_title(f"Delta Map (Slice {best_slice})")
+            # Set all subplot backgrounds to black
+            for a in ax: a.set_facecolor('black')
+
+            # Delta Map
+            im0 = ax[0].imshow(masked_orig, cmap='bwr', vmin=-1.0, vmax=1.0)
+            ax[0].set_title(f"Delta Map (Slice {best_slice})", color='white')
             ax[0].axis('off')
             plt.colorbar(im0, ax=ax[0], fraction=0.046, pad=0.04)
 
             # CNN Focus Heatmap
             im1 = ax[1].imshow(hm_slice, cmap='jet', vmin=0.0, vmax=1.0)
-            ax[1].set_title("CNN Grad-CAM Focus")
+            ax[1].set_title("CNN Grad-CAM Focus", color='white')
             ax[1].axis('off')
             plt.colorbar(im1, ax=ax[1], fraction=0.046, pad=0.04)
 
-            # True 1:1 Co-registered Overlay
-            ax[2].imshow(orig_slice, cmap='bwr', vmin=-1.0, vmax=1.0)
-            ax[2].imshow(hm_slice, cmap='jet', alpha=0.45, vmin=0.0, vmax=1.0)
-            ax[2].set_title("XAI Alignment Overlay")
+            # Overlay
+            ax[2].imshow(hm_slice, cmap='jet', vmin=0.0, vmax=1.0)
+            ax[2].imshow(masked_orig, cmap='bwr', alpha=0.8, vmin=-1.0, vmax=1.0)
+            ax[2].set_title("XAI Alignment Overlay", color='white')
             ax[2].axis('off')
-
+            
+            # Make the figure background match the Streamlit dark theme
+            fig.patch.set_facecolor('#0E1117') 
+            
             st.pyplot(fig)
