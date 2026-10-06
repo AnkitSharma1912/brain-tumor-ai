@@ -166,13 +166,15 @@ if scan1_file and scan2_file and st.button("Run AI Analysis", type="primary"):
             im0 = ax[0].imshow(masked_orig, cmap='bwr', vmin=-1.0, vmax=1.0)
             ax[0].set_title(f"Delta Map (Slice {best_slice})", color='white')
             ax[0].axis('off')
-            plt.colorbar(im0, ax=ax[0], fraction=0.046, pad=0.04)
+            cbar0 = plt.colorbar(im0, ax=ax[0], fraction=0.046, pad=0.04)
+            cbar0.ax.yaxis.set_tick_params(color='white', labelcolor='white')
 
             # CNN Focus Heatmap
             im1 = ax[1].imshow(hm_slice, cmap='jet', vmin=0.0, vmax=1.0)
             ax[1].set_title("CNN Grad-CAM Focus", color='white')
             ax[1].axis('off')
-            plt.colorbar(im1, ax=ax[1], fraction=0.046, pad=0.04)
+            cbar1 = plt.colorbar(im1, ax=ax[1], fraction=0.046, pad=0.04)
+            cbar1.ax.yaxis.set_tick_params(color='white', labelcolor='white')
 
             # Overlay
             ax[2].imshow(hm_slice, cmap='jet', vmin=0.0, vmax=1.0)
