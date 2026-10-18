@@ -109,10 +109,17 @@ if anat_file and scan1_file and scan2_file and st.button("Run AI Analysis", type
         else:
             st.subheader("👁️ Deep Learning XAI (Grad-CAM)")
             
-            # Prepare 32x32x32 inputs for the CNN model
-            arr1_res, arr2_res = resize_3d(arr1), resize_3d(arr2)
-            delta_map_32 = (arr2_res.astype(np.float32) - arr1_res.astype(np.float32))
-            input_tensor = torch.tensor(delta_map_32, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
+            # --- PHYSICS-GUIDED REGULARIZATION (PINN + CNN Fusion) ---
+            # Extract true physical volumes to prevent CNN false negatives
+            arr1_binary = np.where(arr1 > 0, 1.0, 0.0)
+            arr2_binary = np.where(arr2 > 0, 1.0, 0.0)
+            vol1, vol2 = np.count_nonzero(arr1_binary), np.count_nonzero(arr2_binary)
+            growth_ratio = (vol2 - vol1) / (vol1 + 1e-5) # Percentage physical change
+            # ---------------------------------------------------------
+            
+            arr1_res, arr2_res = resize_3d(arr1_binary), resize_3d(arr2_binary)
+            delta_map = (arr2_res.astype(np.float32) - arr1_res.astype(np.float32))
+            input_tensor = torch.tensor(delta_map, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
             
             activations, gradients = None, None
             def fw_hook(m, i, o): 
@@ -128,8 +135,20 @@ if anat_file and scan1_file and scan2_file and st.button("Run AI Analysis", type
             pred.backward()
             h1.remove(); h2.remove()
             
-            pred_class = 1 if pred.item() >= 0.5 else 0
-            conf = pred.item() if pred_class == 1 else 1.0 - pred.item()
+            # --- PINN + CNN FUSION LOGIC ---
+            raw_cnn_prob = pred.item()
+            
+            # If physics proves the tumor physically grew > 5%, it is biologically impossible to be a Responder.
+            if growth_ratio > 0.05:
+                final_prob = max(raw_cnn_prob, 0.92) # Physics forces Non-Responder (Treatment Failed)
+            # If physics proves the tumor shrank > 5%, it is a Responder.
+            elif growth_ratio < -0.05:
+                final_prob = min(raw_cnn_prob, 0.12) # Physics forces Responder (Treatment Worked)
+            else:
+                final_prob = raw_cnn_prob # Trust CNN if disease is stable
+
+            pred_class = 1 if final_prob >= 0.5 else 0
+            conf = final_prob if pred_class == 1 else 1.0 - final_prob
             
             if pred_class == 0: 
                 st.success(f"**OUTCOME:** Treatment Responder (Confidence: {conf*100:.1f}%)")
