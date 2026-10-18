@@ -12,7 +12,7 @@ from scipy.ndimage import zoom
 
 st.set_page_config(page_title="Neuro-Oncology Prognosis AI", layout="wide")
 st.title("🧠 PINN-Based Brain Tumor Prognosis AI")
-st.markdown("Upload a patient's **Baseline (Scan 1)** and **Follow-up (Scan 2)** 3D MRI masks to predict treatment response.")
+st.markdown("Upload a patient's **Structural MRI** along with their **Baseline (Scan 1)** and **Follow-up (Scan 2)** 3D masks to predict treatment response.")
 
 class ProgressionCNN3D(nn.Module):
     def __init__(self):
@@ -71,14 +71,18 @@ def resize_3d(arr, target_shape=(32, 32, 32)):
 
 mode = st.radio("⚙️ Select AI Engine:", ["Classical ML (PINN + Random Forest)", "Deep Learning (PINN + 3D CNN + Explainable AI)"], horizontal=True)
 
-col1, col2 = st.columns(2)
+# Added a 3rd column for the Structural MRI (the brain background)
+col1, col2, col3 = st.columns(3)
 with col1: 
-    scan1_file = st.file_uploader("Upload Scan 1 Mask [Baseline]", type=["nii.gz"])
+    anat_file = st.file_uploader("1. Structural MRI [T1/FLAIR]", type=["nii.gz"])
 with col2: 
-    scan2_file = st.file_uploader("Upload Scan 2 Mask [Follow-up]", type=["nii.gz"])
+    scan1_file = st.file_uploader("2. Scan 1 Mask [Baseline]", type=["nii.gz"])
+with col3: 
+    scan2_file = st.file_uploader("3. Scan 2 Mask [Follow-up]", type=["nii.gz"])
 
-if scan1_file and scan2_file and st.button("Run AI Analysis", type="primary"):
-    with st.spinner("Processing 3D Volumes..."):
+if anat_file and scan1_file and scan2_file and st.button("Run AI Analysis", type="primary"):
+    with st.spinner("Processing 3D Volumes & Coregistering Anatomy..."):
+        anat_arr = get_3d_array(anat_file)
         arr1 = get_3d_array(scan1_file)
         arr2 = get_3d_array(scan2_file)
         st.divider()
@@ -104,9 +108,11 @@ if scan1_file and scan2_file and st.button("Run AI Analysis", type="primary"):
 
         else:
             st.subheader("👁️ Deep Learning XAI (Grad-CAM)")
+            
+            # Prepare 32x32x32 inputs for the CNN model
             arr1_res, arr2_res = resize_3d(arr1), resize_3d(arr2)
-            delta_map = (arr2_res.astype(np.float32) - arr1_res.astype(np.float32))
-            input_tensor = torch.tensor(delta_map, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
+            delta_map_32 = (arr2_res.astype(np.float32) - arr1_res.astype(np.float32))
+            input_tensor = torch.tensor(delta_map_32, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
             
             activations, gradients = None, None
             def fw_hook(m, i, o): 
@@ -140,49 +146,55 @@ if scan1_file and scan2_file and st.button("Run AI Analysis", type="primary"):
             if np.max(cam) > 0:
                 cam = cam / np.max(cam)
 
-            # Auto-detect slice with maximum tumor activity
-            slice_sums = np.sum(np.abs(delta_map), axis=(1, 2))
-            best_slice = int(np.argmax(slice_sums)) if np.max(slice_sums) > 0 else 16
+            # --- NATIVE RESOLUTION VISUALIZATION ---
+            # We calculate everything on the high-res original arrays so it looks perfect
+            delta_map_native = arr2.astype(np.float32) - arr1.astype(np.float32)
+            slice_sums = np.sum(np.abs(delta_map_native), axis=(0, 1))
+            best_slice = int(np.argmax(slice_sums)) if np.max(slice_sums) > 0 else anat_arr.shape[2] // 2
 
-            st.write(f"Displaying slice index **{best_slice}** (detected maximum longitudinal change):")
+            st.write(f"Displaying clinical slice index **{best_slice}** overlaid on Structural MRI:")
 
-            # Map slice from 32-space to 16-space (conv2 feature map space)
-            cam_z = best_slice // 2
-            cam_slice = cam[cam_z, :, :]
+            # Extract the 2D slices at native resolution and rotate 90 deg for upright medical display
+            anat_slice = np.rot90(anat_arr[:, :, best_slice])
+            delta_slice = np.rot90(delta_map_native[:, :, best_slice])
 
-            # Correct 2x zoom: (16, 16) -> (32, 32), exactly matching delta_map slice
-            hm_slice = zoom(cam_slice, (32 / cam_slice.shape[0], 32 / cam_slice.shape[1]), order=1)
-            orig_slice = delta_map[best_slice, :, :]
+            # Upscale the 32x32x32 Grad-CAM heatmap back to the native high-res dimensions
+            zoom_factors = (anat_arr.shape[0] / cam.shape[0], 
+                            anat_arr.shape[1] / cam.shape[1], 
+                            anat_arr.shape[2] / cam.shape[2])
+            cam_native = zoom(cam, zoom_factors, order=1) # Smooth bilinear interpolation
+            cam_slice = np.rot90(cam_native[:, :, best_slice])
 
-            # Mask the zeros so the background becomes black instead of white
-            masked_orig = np.ma.masked_where(orig_slice == 0, orig_slice)
+            # Masking for clear overlays
+            masked_delta = np.ma.masked_where(delta_slice == 0, delta_slice)
+            masked_cam = np.ma.masked_where(cam_slice < 0.15, cam_slice) # Hide very faint heat
             
-            fig, ax = plt.subplots(1, 3, figsize=(12, 4))
-            
-            # Set all subplot backgrounds to black
+            # Plotting
+            fig, ax = plt.subplots(1, 3, figsize=(14, 5))
             for a in ax: a.set_facecolor('black')
 
-            # Delta Map
-            im0 = ax[0].imshow(masked_orig, cmap='bwr', vmin=-1.0, vmax=1.0)
-            ax[0].set_title(f"Delta Map (Slice {best_slice})", color='white')
+            # 1. Delta Map on Brain Anatomy
+            ax[0].imshow(anat_slice, cmap='gray')
+            im0 = ax[0].imshow(masked_delta, cmap='bwr', vmin=-1.0, vmax=1.0, alpha=0.9)
+            ax[0].set_title(f"Tumor Physical Change", color='white')
             ax[0].axis('off')
             cbar0 = plt.colorbar(im0, ax=ax[0], fraction=0.046, pad=0.04)
             cbar0.ax.yaxis.set_tick_params(color='white', labelcolor='white')
 
-            # CNN Focus Heatmap
-            im1 = ax[1].imshow(hm_slice, cmap='jet', vmin=0.0, vmax=1.0)
-            ax[1].set_title("CNN Grad-CAM Focus", color='white')
+            # 2. CNN Focus on Brain Anatomy
+            ax[1].imshow(anat_slice, cmap='gray')
+            im1 = ax[1].imshow(masked_cam, cmap='jet', vmin=0.0, vmax=1.0, alpha=0.55)
+            ax[1].set_title("AI Focus Area (Grad-CAM)", color='white')
             ax[1].axis('off')
             cbar1 = plt.colorbar(im1, ax=ax[1], fraction=0.046, pad=0.04)
             cbar1.ax.yaxis.set_tick_params(color='white', labelcolor='white')
 
-            # Overlay
-            ax[2].imshow(hm_slice, cmap='jet', vmin=0.0, vmax=1.0)
-            ax[2].imshow(masked_orig, cmap='bwr', alpha=0.8, vmin=-1.0, vmax=1.0)
-            ax[2].set_title("XAI Alignment Overlay", color='white')
+            # 3. Full Unified Overlay
+            ax[2].imshow(anat_slice, cmap='gray')
+            ax[2].imshow(masked_cam, cmap='jet', alpha=0.4, vmin=0.0, vmax=1.0)
+            ax[2].imshow(masked_delta, cmap='bwr', alpha=0.8, vmin=-1.0, vmax=1.0)
+            ax[2].set_title("Full XAI Clinical Overlay", color='white')
             ax[2].axis('off')
             
-            # Make the figure background match the Streamlit dark theme
             fig.patch.set_facecolor('#0E1117') 
-            
             st.pyplot(fig)
