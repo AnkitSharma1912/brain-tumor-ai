@@ -148,7 +148,11 @@ if anat_file and scan1_file and scan2_file and st.button("Run AI Analysis", type
 
             # --- NATIVE RESOLUTION VISUALIZATION ---
             # We calculate everything on the high-res original arrays so it looks perfect
-            delta_map_native = arr2.astype(np.float32) - arr1.astype(np.float32)
+            
+            arr1_native = resize_3d(arr1, target_shape=anat_arr.shape) if arr1.shape != anat_arr.shape else arr1
+            arr2_native = resize_3d(arr2, target_shape=anat_arr.shape) if arr2.shape != anat_arr.shape else arr2
+            
+            delta_map_native = arr2_native.astype(np.float32) - arr1_native.astype(np.float32)
             slice_sums = np.sum(np.abs(delta_map_native), axis=(0, 1))
             best_slice = int(np.argmax(slice_sums)) if np.max(slice_sums) > 0 else anat_arr.shape[2] // 2
 
