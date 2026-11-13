@@ -13,7 +13,7 @@ import tempfile
 
 # 1. Page Configuration
 st.set_page_config(page_title="PINN-Based Brain Tumor Prognosis AI", layout="wide")
-st.title("🧠 PINN-Based Brain Tumor Prognosis AI")
+st.title("PINN-Based Brain Tumor Prognosis AI")
 st.markdown(
     "Upload a patient's **Structural MRI [T1/FLAIR]** and **Baseline 3D Mask** (Mandatory), "
     "followed by **any single or multiple post-radiotherapy follow-up masks** "
