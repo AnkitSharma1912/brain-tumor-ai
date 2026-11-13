@@ -165,13 +165,13 @@ for idx, (label, dt_months, key_name) in enumerate(followup_schedule):
 if st.button("🚀 Run Longitudinal Prognosis AI", type="primary"):
     if flair_file is None or base_file is None:
         st.warning(
-            "⚠️ Please upload both the mandatory **Structural MRI [T1/FLAIR]** and **Baseline Mask**."
+            "Please upload both the mandatory **Structural MRI [T1/FLAIR]** and **Baseline Mask**."
         )
         st.stop()
 
     if len(uploaded_followups) == 0:
         st.warning(
-            "⚠️ Please upload **at least one Follow-Up Mask** (6 Weeks, 3m, 6m, 9m, or 12m) to evaluate progression."
+            "Please upload **at least one Follow-Up Mask** (6 Weeks, 3m, 6m, 9m, or 12m) to evaluate progression."
         )
         st.stop()
 
@@ -250,7 +250,7 @@ if st.button("🚀 Run Longitudinal Prognosis AI", type="primary"):
 
     # 9. Display Longitudinal Summary Metrics (Unchanged Layout)
     st.divider()
-    st.subheader(f"📊 Final Evaluation: Baseline vs. {final_label} (Δt = {final_dt} Months)")
+    st.subheader(f"Final Evaluation: Baseline vs. {final_label} (Δt = {final_dt} Months)")
 
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Baseline Volume (t = 0)", f"{vol_base:,} voxels")
@@ -271,7 +271,7 @@ if st.button("🚀 Run Longitudinal Prognosis AI", type="primary"):
     # 10. Longitudinal Trajectory Table & Curve
     if len(uploaded_followups) >= 1:
         with st.expander(
-            "📈 View Complete Multi-Timepoint Longitudinal Trajectory",
+            "View Complete Multi-Timepoint Longitudinal Trajectory",
             expanded=(len(uploaded_followups) > 1),
         ):
             traj_df = pd.DataFrame(trajectory_records)
@@ -304,7 +304,7 @@ if st.button("🚀 Run Longitudinal Prognosis AI", type="primary"):
 
     # 11. Causal AI Counterfactual & Treatment-Effect Analysis
     with st.expander(
-        "🧬 Causal AI: Counterfactual & Individualized Treatment-Effect (ITE) Analysis",
+        "Causal AI: Counterfactual & Individualized Treatment-Effect (ITE) Analysis",
         expanded=True,
     ):
         st.caption(
@@ -383,7 +383,7 @@ if st.button("🚀 Run Longitudinal Prognosis AI", type="primary"):
 
         if pred == 0:
             st.success(
-                f"✅ **FINAL PROGNOSIS ({final_label}): TREATMENT RESPONDER** "
+                f"**FINAL PROGNOSIS ({final_label}): TREATMENT RESPONDER** "
                 f"— Tumor is shrinking or stable (Confidence: **{conf:.1f}%**)."
             )
         else:
@@ -425,12 +425,12 @@ if st.button("🚀 Run Longitudinal Prognosis AI", type="primary"):
 
         if dl_pred == 0:
             st.success(
-                f"✅ **3D DEEP LEARNING PROGNOSIS ({final_label}): TREATMENT RESPONDER** "
+                f"**3D DEEP LEARNING PROGNOSIS ({final_label}): TREATMENT RESPONDER** "
                 f"(Physics-Regularized Confidence: **{dl_conf:.1f}%**)"
             )
         else:
             st.error(
-                f"🚨 **3D DEEP LEARNING PROGNOSIS ({final_label}): NON-RESPONDER (PROGRESSIVE DISEASE)** "
+                f"**3D DEEP LEARNING PROGNOSIS ({final_label}): NON-RESPONDER (PROGRESSIVE DISEASE)** "
                 f"(Physics-Regularized Confidence: **{dl_conf:.1f}%**)"
             )
 
