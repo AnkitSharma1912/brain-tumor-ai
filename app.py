@@ -114,7 +114,7 @@ engine = st.radio(
 st.markdown("---")
 
 # 6. Mandatory Upload Section: Structural MRI + Baseline Mask
-st.subheader("📌 Step 1: Mandatory Baseline Scans (Pre-Treatment / Day 0)")
+st.subheader("Step 1: Mandatory Baseline Scans (Pre-Treatment / Day 0)")
 m_col1, m_col2 = st.columns(2)
 
 with m_col1:
@@ -131,7 +131,7 @@ with m_col2:
 
 # 7. Optional Multi-Horizon Follow-Up Section
 st.subheader(
-    "📅 Step 2: Post-Radiotherapy Follow-Up Schedule (Upload Any 1 or More)"
+    "Step 2: Post-Radiotherapy Follow-Up Schedule (Upload Any 1 or More)"
 )
 st.caption(
     "You can upload a single follow-up scan at any random timepoint (e.g., only 6 Weeks or only 6 Months) "
